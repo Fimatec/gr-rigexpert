@@ -209,6 +209,7 @@ namespace gr
                     _rx_cond.wait(lock);
                 }
             }
+            int produced = noutput_items;
             if (this->_rx_filled > 0)
             {
                 float * buff = _rx_bufs[_rx_idx_r] + _rx_pos_r * 2;
@@ -216,6 +217,10 @@ namespace gr
                 if (samples_count > (size_t)noutput_items)
                 {
                     samples_count = noutput_items;
+                }
+                else if (samples_count < (size_t)noutput_items)
+                {
+                    produced = samples_count;
                 }
                 memcpy((float*)out, buff, samples_count * 2 * sizeof(float));
                 _rx_pos_r += samples_count;
@@ -231,7 +236,7 @@ namespace gr
             {
                 printf("u");
             }
-            return noutput_items;
+            return produced;
         }
         //======================================================================
         void fobos_sdr_impl::read_samples_callback(float *buf, uint32_t buf_length, void *ctx)

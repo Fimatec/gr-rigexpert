@@ -72,7 +72,6 @@ namespace gr
             _rx_filled = 0;
             _running = false;
             _buff_counter = 0;
-            _overruns_count = 0;
             fobos_rx_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
@@ -151,6 +150,7 @@ namespace gr
 
                     _running = true;
                     _thread = gr::thread::thread(thread_proc, this);
+                    _thread_started = true;
                 }
                 else
                 {
@@ -169,12 +169,13 @@ namespace gr
             if (_dev)
             {
                 fobos_rx_cancel_async(_dev);
-                fobos_rx_close(_dev);
             }
-            //if (_thread.joinable()) // - does not work in boost::thread 
-            if (_running)
-            {
+            if (_thread_started) {
                 _thread.join();
+            }
+            if (_dev)
+            {
+                fobos_rx_close(_dev);
             }
             if (_rx_bufs)
             {
@@ -195,20 +196,9 @@ namespace gr
                                  gr_vector_void_star& output_items)
         {
             auto out = static_cast<output_type*>(output_items[0]);
-            if (!_running)
-            {
-                printf("%d ", noutput_items);
-                printf("^");
-                return 0;
-            }
-            {
-                std::unique_lock<std::mutex> lock(_rx_mutex);
-                if (_rx_filled == 0)
-                {
-                    //printf("w");
-                    _rx_cond.wait(lock);
-                }
-            }
+            std::unique_lock<std::mutex> lock(_rx_mutex);
+            _rx_cond.wait(lock, [&]{ return !_running || _rx_filled > 0; });
+            if (!_running && _rx_filled == 0) return 0;
             int produced = 0;
             if (this->_rx_filled > 0)
             {
@@ -218,20 +208,17 @@ namespace gr
                 {
                     samples_count = noutput_items;
                 }
+                lock.unlock();
                 memcpy((float*)out, buff, samples_count * 2 * sizeof(float));
+                lock.lock();
                 _rx_pos_r += samples_count;
                 if (_rx_pos_r >= _rx_buff_len)
                 {
-                    std::lock_guard<std::mutex> lock(_rx_mutex);
                     _rx_pos_r = 0;
                     _rx_idx_r = (_rx_idx_r + 1) % _rx_buffs_count;
                     _rx_filled--;
                 }
                 produced = (int)samples_count;
-            }
-            else
-            {
-                printf("u");
             }
             return produced;
         }
@@ -239,12 +226,12 @@ namespace gr
         void fobos_sdr_impl::read_samples_callback(float *buf, uint32_t buf_length, void *ctx)
         {
             fobos_sdr_impl* _this = static_cast<fobos_sdr_impl*>(ctx);
-            //printf("+");
             if (_this->_rx_buff_len != buf_length)
             {
                 printf("Err: wrong buf_length!!!");
                 printf("canceling...");
                 fobos_rx_cancel_async(_this->_dev);
+                return;
             }
             std::lock_guard<std::mutex> lock(_this->_rx_mutex);
             if (_this->_rx_filled < _this->_rx_buffs_count)
@@ -255,9 +242,7 @@ namespace gr
             }
             else
             {
-                _this->_overruns_count++;
-                // printf("#");
-                //printf("OVERRUN!!!");
+                printf("OVERRUN!!!");
             }
             _this->_rx_cond.notify_one();
         }
@@ -273,7 +258,11 @@ namespace gr
             {
                 printf("fobos_rx_read_async - error!\n");
             }
-            _this->_running = false;
+            {
+                std::lock_guard<std::mutex> lock(_this->_rx_mutex);
+                _this->_running = false;
+            }
+            _this->_rx_cond.notify_all();
         }
         //======================================================================
         void fobos_sdr_impl::set_frequency(double frequency)

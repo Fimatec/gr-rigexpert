@@ -35,6 +35,7 @@ namespace gr
             uint32_t _buff_counter;
             bool _running;
             gr::thread::thread _thread;
+            bool _thread_started = false;
             std::mutex _rx_mutex;
             std::condition_variable _rx_cond;
             float ** _rx_bufs;
@@ -45,7 +46,6 @@ namespace gr
             size_t _rx_pos_w;
             size_t _rx_idx_r;
             size_t _rx_pos_r;
-            uint32_t _overruns_count;
             struct fobos_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, void * ctx);
             static void thread_proc(fobos_sdr_impl * ctx);

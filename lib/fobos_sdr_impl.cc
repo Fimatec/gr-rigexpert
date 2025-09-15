@@ -200,16 +200,16 @@ namespace gr
             _rx_cond.wait(lock, [&]{ return !_running || _rx_filled > 0; });
             if (!_running && _rx_filled == 0) return 0;
             int produced = 0;
-            if (this->_rx_filled > 0)
+            if (this->_rx_filled > 0 && produced < noutput_items)
             {
                 float * buff = _rx_bufs[_rx_idx_r] + _rx_pos_r * 2;
-                size_t samples_count = (_rx_buff_len - _rx_pos_r);
-                if (samples_count > (size_t)noutput_items)
+                size_t samples_count = _rx_buff_len - _rx_pos_r;
+                if (samples_count > static_cast<size_t>(noutput_items - produced))
                 {
-                    samples_count = noutput_items;
+                    samples_count = noutput_items - produced;
                 }
                 lock.unlock();
-                memcpy((float*)out, buff, samples_count * 2 * sizeof(float));
+                memcpy(reinterpret_cast<float*>(out) + produced * 2, buff, samples_count * 2 * sizeof(float));
                 lock.lock();
                 _rx_pos_r += samples_count;
                 if (_rx_pos_r >= _rx_buff_len)
@@ -218,7 +218,7 @@ namespace gr
                     _rx_idx_r = (_rx_idx_r + 1) % _rx_buffs_count;
                     _rx_filled--;
                 }
-                produced = (int)samples_count;
+                produced += static_cast<int>(samples_count);
             }
             return produced;
         }

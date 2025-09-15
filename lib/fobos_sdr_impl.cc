@@ -200,7 +200,7 @@ namespace gr
             _rx_cond.wait(lock, [&]{ return !_running || _rx_filled > 0; });
             if (!_running && _rx_filled == 0) return 0;
             int produced = 0;
-            if (this->_rx_filled > 0 && produced < noutput_items)
+            while (this->_rx_filled > 0 && produced < noutput_items)
             {
                 float * buff = _rx_bufs[_rx_idx_r] + _rx_pos_r * 2;
                 size_t samples_count = _rx_buff_len - _rx_pos_r;

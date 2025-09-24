@@ -198,7 +198,7 @@ namespace gr
             auto out = static_cast<output_type*>(output_items[0]);
             std::unique_lock<std::mutex> lock(_rx_mutex);
             _rx_cond.wait(lock, [&]{ return !_running || _rx_filled > 0; });
-            if (_fatal_error.load() || (!_running && _rx_filled == 0)) return WORK_DONE;
+            if (!_running && _rx_filled == 0) return 0;
             int produced = 0;
             while (this->_rx_filled > 0 && produced < noutput_items)
             {
@@ -228,10 +228,9 @@ namespace gr
             fobos_sdr_impl* _this = static_cast<fobos_sdr_impl*>(ctx);
             if (_this->_rx_buff_len != buf_length)
             {
-                std::cerr << "fobos_sdr: Invalid buffer length" << std::endl;
-                _this->_fatal_error = true;
+                printf("Err: wrong buf_length!!!");
+                printf("canceling...");
                 fobos_rx_cancel_async(_this->_dev);
-                _this->_rx_cond.notify_one();
                 return;
             }
             std::lock_guard<std::mutex> lock(_this->_rx_mutex);
@@ -243,9 +242,7 @@ namespace gr
             }
             else
             {
-                std::cerr << "fobos_sdr: RX overrun" << std::endl;
-                _this->_fatal_error = true;
-                fobos_rx_cancel_async(_this->_dev);
+                printf("OVERRUN!!!");
             }
             _this->_rx_cond.notify_one();
         }

@@ -24,8 +24,6 @@
 #include <condition_variable>
 #include <gnuradio/RigExpert/fobos_sdr.h>
 #include <fobos.h>
-#include <atomic>
-#include <iostream>
 
 namespace gr
 {
@@ -51,7 +49,6 @@ namespace gr
             struct fobos_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, void * ctx);
             static void thread_proc(fobos_sdr_impl * ctx);
-            std::atomic<bool> _fatal_error{false};
         public:
             fobos_sdr_impl( int index, 
                             double frequency, 

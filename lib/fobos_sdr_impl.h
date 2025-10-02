@@ -23,7 +23,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <gnuradio/RigExpert/fobos_sdr.h>
-#include <fobos.h>
+#include <fobos_sdr.h>
 
 namespace gr
 {
@@ -46,8 +46,8 @@ namespace gr
             size_t _rx_pos_w;
             size_t _rx_idx_r;
             size_t _rx_pos_r;
-            struct fobos_dev_t * _dev = NULL;
-            static void read_samples_callback(float * buf, uint32_t buf_length, void * ctx);
+            struct fobos_sdr_dev_t * _dev = NULL;
+            static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
             static void thread_proc(fobos_sdr_impl * ctx);
         public:
             fobos_sdr_impl( int index, 

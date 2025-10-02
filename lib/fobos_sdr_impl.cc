@@ -72,25 +72,25 @@ namespace gr
             _rx_filled = 0;
             _running = false;
             _buff_counter = 0;
-            fobos_rx_get_api_info(lib_version, drv_version);
+            fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
-            int count = fobos_rx_get_device_count();
+            int count = fobos_sdr_get_device_count();
 
             printf("fobos_sdr_impl:: found devices: %d\n", count);
             if (count > 0)
             {
                 int result = 0;
 
-                result = fobos_rx_open(&_dev, index);
+                result = fobos_sdr_open(&_dev, index);
 
                 if (result == 0)
                 {
                     printf("open...ok\n");
-                    result = fobos_rx_get_board_info(_dev, hw_revision, fw_version, manufacturer, product, serial);
+                    result = fobos_sdr_get_board_info(_dev, hw_revision, fw_version, manufacturer, product, serial);
                     if (result != 0)
                     {
-                        printf("fobos_rx_get_board_info - error!\n");
+                        printf("fobos_sdr_get_board_info - error!\n");
                     }
                     else
                     {
@@ -103,40 +103,40 @@ namespace gr
                     }
                     printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
 
-                    result = fobos_rx_set_frequency(_dev, frequency, 0);
+                    result = fobos_sdr_set_frequency(_dev, frequency);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_frequency - error!\n");
+                        printf("fobos_sdr_set_frequency - error!\n");
                     }
 
-                    result = fobos_rx_set_samplerate(_dev, samplerate, 0);
+                    result = fobos_sdr_set_samplerate(_dev, samplerate);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_samplerate - error!\n");
+                        printf("fobos_sdr_set_samplerate - error!\n");
                     }
 
-                    result = fobos_rx_set_lna_gain(_dev, lna_gain);
+                    result = fobos_sdr_set_lna_gain(_dev, lna_gain);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_lna_gain - error!\n");
+                        printf("fobos_sdr_set_lna_gain - error!\n");
                     }
 
-                    result = fobos_rx_set_vga_gain(_dev, vga_gain);
+                    result = fobos_sdr_set_vga_gain(_dev, vga_gain);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_vga_gain - error!\n");
+                        printf("fobos_sdr_set_vga_gain - error!\n");
                     }
 
-                    result = fobos_rx_set_direct_sampling(_dev, direct_sampling);
+                    result = fobos_sdr_set_direct_sampling(_dev, direct_sampling);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_direct_sampling - error!\n");
+                        printf("fobos_sdr_set_direct_sampling - error!\n");
                     }
                     
-                    result = fobos_rx_set_clk_source(_dev, clock_source);
+                    result = fobos_sdr_set_clk_source(_dev, clock_source);
                     if (result != 0)
                     {
-                        printf("fobos_rx_set_clk_source - error!\n");
+                        printf("fobos_sdr_set_clk_source - error!\n");
                     }
 
                     _rx_buffs_count = 32;
@@ -168,14 +168,14 @@ namespace gr
         {
             if (_dev)
             {
-                fobos_rx_cancel_async(_dev);
+                fobos_sdr_cancel_async(_dev);
             }
             if (_thread_started) {
                 _thread.join();
             }
             if (_dev)
             {
-                fobos_rx_close(_dev);
+                fobos_sdr_close(_dev);
             }
             if (_rx_bufs)
             {
@@ -223,14 +223,14 @@ namespace gr
             return produced;
         }
         //======================================================================
-        void fobos_sdr_impl::read_samples_callback(float *buf, uint32_t buf_length, void *ctx)
+        void fobos_sdr_impl::read_samples_callback(float *buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void *user)
         {
-            fobos_sdr_impl* _this = static_cast<fobos_sdr_impl*>(ctx);
+            fobos_sdr_impl* _this = static_cast<fobos_sdr_impl*>(user);
             if (_this->_rx_buff_len != buf_length)
             {
                 printf("Err: wrong buf_length!!!");
                 printf("canceling...");
-                fobos_rx_cancel_async(_this->_dev);
+                fobos_sdr_cancel_async(sender);
                 return;
             }
             std::lock_guard<std::mutex> lock(_this->_rx_mutex);
@@ -249,14 +249,14 @@ namespace gr
         //======================================================================
         void fobos_sdr_impl::thread_proc(fobos_sdr_impl * _this)
         {
-            int result = fobos_rx_read_async(_this->_dev, read_samples_callback, _this, 16, _this->_rx_buff_len);
+            int result = fobos_sdr_read_async(_this->_dev, read_samples_callback, _this, 16, _this->_rx_buff_len);
             if (result == 0)
             {
-                printf("fobos_rx_read_async - ok!\n");
+                printf("fobos_sdr_read_async - ok!\n");
             }
             else
             {
-                printf("fobos_rx_read_async - error!\n");
+                printf("fobos_sdr_read_async - error!\n");
             }
             {
                 std::lock_guard<std::mutex> lock(_this->_rx_mutex);
@@ -267,39 +267,37 @@ namespace gr
         //======================================================================
         void fobos_sdr_impl::set_frequency(double frequency)
         {
-            double actual;
-            int res = fobos_rx_set_frequency(_dev, frequency, &actual);
-            printf("Setting freq %f MHz, actual %f MHz: %s\n", frequency / 1E6, actual / 1E6, res == 0 ? "OK" : "ERR");
+            int res = fobos_sdr_set_frequency(_dev, frequency);
+            printf("Setting freq %f MHz: %s\n", frequency / 1E6, res == 0 ? "OK" : "ERR");
         }
         //======================================================================
         void fobos_sdr_impl::set_samplerate(double samplerate)
         {
-            double actual;
-            int res = fobos_rx_set_samplerate(_dev, samplerate, &actual);
-            printf("Setting sample rate %f MHz, actual %f MHz: %s\n", samplerate / 1E6, actual / 1E6, res == 0 ? "OK" : "ERR");
+            int res = fobos_sdr_set_samplerate(_dev, samplerate);
+            printf("Setting sample rate %f MHz: %s\n", samplerate / 1E6, res == 0 ? "OK" : "ERR");
         }
         //======================================================================
         void fobos_sdr_impl::set_lna_gain(int lna_gain)
         {
-            int res = fobos_rx_set_lna_gain(_dev, lna_gain);
+            int res = fobos_sdr_set_lna_gain(_dev, lna_gain);
             printf("Setting LNA gain to #%d: %s\n", lna_gain, res == 0 ? "OK" : "ERR");
         }
         //======================================================================
         void fobos_sdr_impl::set_vga_gain(int vga_gain)
         {
-            int res = fobos_rx_set_vga_gain(_dev, vga_gain);
+            int res = fobos_sdr_set_vga_gain(_dev, vga_gain);
             printf("Setting VGA gain to #%d: %s\n",  vga_gain, res == 0 ? "OK" : "ERR");
         }
         //======================================================================
         void fobos_sdr_impl::set_direct_sampling(int direct_sampling)
         {
-            int res = fobos_rx_set_direct_sampling(_dev, direct_sampling);
+            int res = fobos_sdr_set_direct_sampling(_dev, direct_sampling);
             printf("Setting direct sampling mode to %d: %s\n",  direct_sampling, res == 0 ? "OK" : "ERR");
         }
         //======================================================================
         void fobos_sdr_impl::set_clock_source(int clock_source)
         {
-            int res = fobos_rx_set_clk_source(_dev, clock_source);
+            int res = fobos_sdr_set_clk_source(_dev, clock_source);
             printf("Setting clock source to %s: %s\n",  clock_source == 0 ? "internal" : "external", res == 0 ? "OK" : "ERR");
         }
         //======================================================================

@@ -161,6 +161,10 @@ namespace gr
             {
                 printf("could not find any fobos_sdr compatible device!\n");
             }
+            message_port_register_in(pmt::mp("freq"));
+            set_msg_handler(pmt::mp("freq"), [this](pmt::pmt_t msg) {
+                this->handle_freq_msg(msg);
+            });
         }
         //======================================================================
         // virtual destructor
@@ -187,6 +191,15 @@ namespace gr
                     }
                 }
                 free(_rx_bufs);
+            }
+        }
+        //======================================================================
+        // Handle pmt frequency input
+        void fobos_sdr_impl::handle_freq_msg(pmt::pmt_t msg)
+        {
+            if (pmt::is_real(msg) || pmt::is_integer(msg))
+            {
+                set_frequency(pmt::to_double(msg));
             }
         }
         //======================================================================

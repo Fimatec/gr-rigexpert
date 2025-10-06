@@ -61,7 +61,9 @@ parameters:
 
 
 inputs:
-# none
+- id: freq
+  domain: message
+  optional: true
 
 outputs:
 - label: out0

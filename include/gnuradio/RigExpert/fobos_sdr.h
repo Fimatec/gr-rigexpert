@@ -43,9 +43,10 @@ namespace gr
              * class. RigExpert::fobos_sdr::make is the public interface for
              * creating new instances.
              */
-            static sptr make(   int index = 0, 
-                                double frequency_mhz = 100.0, 
-                                double samplerate_mhz = 10.0,
+            static sptr make(   int index = 0,
+                                double warmup_frequency = 100e6,
+                                double frequency = 100e6, 
+                                double samplerate = 10e6,
                                 int lna_gain = 0,
                                 int vga_gain = 0,
                                 int direct_sampling = 0,
@@ -54,8 +55,8 @@ namespace gr
             /**
              * @brief Callback for setting parameters on-the-fly
              */
-            virtual void set_frequency(double frequency_mhz) = 0;
-            virtual void set_samplerate(double samplerate_mhz) = 0;
+            virtual void set_frequency(double frequency) = 0;
+            virtual void set_samplerate(double samplerate) = 0;
             virtual void set_lna_gain(int lna_gain) = 0;
             virtual void set_vga_gain(int vga_gain) = 0;
             virtual void set_direct_sampling(int direct_sampling) = 0;

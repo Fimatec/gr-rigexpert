@@ -25,16 +25,18 @@ namespace gr
         //======================================================================
         using output_type = gr_complex;
         fobos_sdr::sptr fobos_sdr::make(int index, 
-                                        double frequency, 
+                                        double warmup_frequency,
+                                        double frequency,
                                         double samplerate,
                                         int lna_gain,
                                         int vga_gain,
                                         int direct_sampling,
                                         int clock_source)
         {
-            printf("make (%d, %f, %f, %d, %d, %d, %d)\n", index, frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
+            printf("make (%d, %f, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
             return gnuradio::make_block_sptr<fobos_sdr_impl>(
-                                        index, 
+                                        index,
+                                        warmup_frequency,
                                         frequency, 
                                         samplerate,
                                         lna_gain,
@@ -44,7 +46,8 @@ namespace gr
         }
         //======================================================================
         // The private constructor
-        fobos_sdr_impl::fobos_sdr_impl( int index, 
+        fobos_sdr_impl::fobos_sdr_impl( int index,
+                                        double warmup_frequency,
                                         double frequency, 
                                         double samplerate,
                                         int lna_gain,
@@ -72,6 +75,7 @@ namespace gr
             _rx_filled = 0;
             _running = false;
             _buff_counter = 0;
+            _frequency = frequency;
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
@@ -101,9 +105,9 @@ namespace gr
                         printf("    product:      %s\n", product);
                         printf("    serial:       %s\n", serial);
                     }
-                    printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
+                    printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
 
-                    result = fobos_sdr_set_frequency(_dev, frequency);
+                    result = fobos_sdr_set_frequency(_dev, warmup_frequency);
                     if (result != 0)
                     {
                         printf("fobos_sdr_set_frequency - error!\n");
@@ -161,8 +165,8 @@ namespace gr
             {
                 printf("could not find any fobos_sdr compatible device!\n");
             }
-            message_port_register_in(pmt::mp("freq"));
-            set_msg_handler(pmt::mp("freq"), [this](pmt::pmt_t msg) {
+            message_port_register_in(pmt::mp("end_warmup"));
+            set_msg_handler(pmt::mp("end_warmup"), [this](pmt::pmt_t msg) {
                 this->handle_freq_msg(msg);
             });
         }
@@ -194,13 +198,10 @@ namespace gr
             }
         }
         //======================================================================
-        // Handle pmt frequency input
+        // Handle pmt input
         void fobos_sdr_impl::handle_freq_msg(pmt::pmt_t msg)
         {
-            if (pmt::is_real(msg) || pmt::is_integer(msg))
-            {
-                set_frequency(pmt::to_double(msg));
-            }
+            set_frequency(_frequency);
         }
         //======================================================================
         // Work

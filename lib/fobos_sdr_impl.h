@@ -47,12 +47,14 @@ namespace gr
             size_t _rx_pos_w;
             size_t _rx_idx_r;
             size_t _rx_pos_r;
+            double _frequency;
             struct fobos_sdr_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
             static void thread_proc(fobos_sdr_impl * ctx);
             void handle_freq_msg(pmt::pmt_t msg);
         public:
-            fobos_sdr_impl( int index, 
+            fobos_sdr_impl( int index,
+                            double warmup_frequency,
                             double frequency, 
                             double samplerate,
                             int lna_gain,

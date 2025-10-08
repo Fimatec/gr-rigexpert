@@ -76,6 +76,8 @@ namespace gr
             _running = false;
             _buff_counter = 0;
             _frequency = frequency;
+            _lna_gain = lna_gain;
+            _vga_gain = vga_gain;
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
@@ -105,7 +107,7 @@ namespace gr
                         printf("    product:      %s\n", product);
                         printf("    serial:       %s\n", serial);
                     }
-                    printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
+                    printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, samplerate, 0, 0, direct_sampling, clock_source);
 
                     result = fobos_sdr_set_frequency(_dev, warmup_frequency);
                     if (result != 0)
@@ -119,13 +121,13 @@ namespace gr
                         printf("fobos_sdr_set_samplerate - error!\n");
                     }
 
-                    result = fobos_sdr_set_lna_gain(_dev, lna_gain);
+                    result = fobos_sdr_set_lna_gain(_dev, 0);
                     if (result != 0)
                     {
                         printf("fobos_sdr_set_lna_gain - error!\n");
                     }
 
-                    result = fobos_sdr_set_vga_gain(_dev, vga_gain);
+                    result = fobos_sdr_set_vga_gain(_dev, 0);
                     if (result != 0)
                     {
                         printf("fobos_sdr_set_vga_gain - error!\n");
@@ -202,6 +204,8 @@ namespace gr
         void fobos_sdr_impl::handle_freq_msg(pmt::pmt_t msg)
         {
             set_frequency(_frequency);
+            set_lna_gain(_lna_gain);
+            set_vga_gain(_vga_gain);
         }
         //======================================================================
         // Work

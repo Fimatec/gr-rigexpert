@@ -50,10 +50,12 @@ namespace gr
             double _frequency;
             int _lna_gain;
             int _vga_gain;
+            bool _warmup;
             struct fobos_sdr_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
             static void thread_proc(fobos_sdr_impl * ctx);
-            void handle_freq_msg(pmt::pmt_t msg);
+            void handle_end_warmup_msg(pmt::pmt_t msg);
+            void handle_control_msg(pmt::pmt_t msg);
         public:
             fobos_sdr_impl( int index,
                             double warmup_frequency,

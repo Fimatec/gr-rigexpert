@@ -78,6 +78,7 @@ namespace gr
             _frequency = frequency;
             _lna_gain = lna_gain;
             _vga_gain = vga_gain;
+            _warmup = true;
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
@@ -169,7 +170,11 @@ namespace gr
             }
             message_port_register_in(pmt::mp("end_warmup"));
             set_msg_handler(pmt::mp("end_warmup"), [this](pmt::pmt_t msg) {
-                this->handle_freq_msg(msg);
+                this->handle_end_warmup_msg(msg);
+            });
+            message_port_register_in(pmt::mp("control"));
+            set_msg_handler(pmt::mp("control"), [this](pmt::pmt_t msg) {
+                this->handle_control_msg(msg);
             });
         }
         //======================================================================
@@ -201,11 +206,27 @@ namespace gr
         }
         //======================================================================
         // Handle pmt input
-        void fobos_sdr_impl::handle_freq_msg(pmt::pmt_t msg)
+        void fobos_sdr_impl::handle_end_warmup_msg(pmt::pmt_t msg)
         {
+            _warmup = false;
             set_frequency(_frequency);
             set_lna_gain(_lna_gain);
             set_vga_gain(_vga_gain);
+        }
+        void fobos_sdr_impl::handle_control_msg(pmt::pmt_t msg)
+        {
+            if (!pmt::is_dict(msg)) return;
+            pmt::pmt_t v_freq = pmt::dict_ref(msg, pmt::intern("freq"), pmt::PMT_NIL);
+            if (pmt::is_number(v_freq)) _frequency = pmt::to_double(v_freq);
+            pmt::pmt_t v_lna = pmt::dict_ref(msg, pmt::intern("lna"), pmt::PMT_NIL);
+            if (pmt::is_number(v_lna)) _lna_gain = pmt::to_long(v_lna);
+            pmt::pmt_t v_vga = pmt::dict_ref(msg, pmt::intern("vga"), pmt::PMT_NIL);
+            if (pmt::is_number(v_vga)) _vga_gain = pmt::to_double(v_vga);
+            if (!_warmup) {
+                set_frequency(_frequency);
+                set_lna_gain(_lna_gain);
+                set_vga_gain(_vga_gain);
+            }
         }
         //======================================================================
         // Work

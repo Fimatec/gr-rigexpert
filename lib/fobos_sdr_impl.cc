@@ -77,12 +77,15 @@ namespace gr
             _rx_pos_w = 0;
             _rx_filled = 0;
             _running = false;
-            _buff_counter = 0;
             _frequency = -1;
             _lna_gain = lna_gain;
             _vga_gain = vga_gain;
+            _sample_rate = samplerate;
             _warmup = true;
             _is_scanning = false;
+            _phase = 0;
+            _sample_count = 0;
+
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
@@ -144,9 +147,9 @@ namespace gr
             _vec_thread = gr::thread::thread(vector_loop, this);
             _vec_thread_started = true;
 
-            message_port_register_in(pmt::mp("end_warmup"));
-            set_msg_handler(pmt::mp("end_warmup"), [this](pmt::pmt_t msg) {
-                this->handle_end_warmup_msg(msg);
+            message_port_register_in(pmt::mp("phase"));
+            set_msg_handler(pmt::mp("phase"), [this](pmt::pmt_t msg) {
+                this->handle_phase_msg(msg);
             });
             message_port_register_in(pmt::mp("control"));
             set_msg_handler(pmt::mp("control"), [this](pmt::pmt_t msg) {
@@ -190,8 +193,12 @@ namespace gr
         }
         //======================================================================
         // Handle pmt input
-        void fobos_sdr_impl::handle_end_warmup_msg(pmt::pmt_t msg)
+        void fobos_sdr_impl::handle_phase_msg(pmt::pmt_t msg)
         {
+            if (pmt::is_integer(msg))
+            {
+                _phase = pmt::to_uint64(msg);
+            }
             _warmup = false;
             set_lna_gain(_lna_gain);
             set_vga_gain(_vga_gain);
@@ -263,6 +270,8 @@ namespace gr
                 fobos_sdr_cancel_async(sender);
                 return;
             }
+            uint32_t prev_sample_count = _this->_sample_count;
+            _this->_sample_count = (_this->_sample_count + buf_length) % _this->_sample_rate;;
             const bool is_scanning = fobos_sdr_is_scanning(sender);
             const int channel = fobos_sdr_get_scan_index(sender);
             {
@@ -286,15 +295,18 @@ namespace gr
                 }
                 _this->_rx_cond.notify_one();
             }
+            if (is_scanning && channel != -1)
             {
-                std::lock_guard<std::mutex> lock(_this->_vec_mutex);
-                std::vector<gr_complex> vec(_this->_rx_buff_len);
-                if (is_scanning && channel != -1)
+                uint32_t diff_phase = (_this->_phase - prev_sample_count + _this->_sample_rate) % _this->_sample_rate;
+                uint32_t diff_curr  = (_this->_sample_count  - prev_sample_count + _this->_sample_rate) % _this->_sample_rate;
+                if (diff_phase >= diff_curr)
                 {
+                    std::lock_guard<std::mutex> lock(_this->_vec_mutex);
+                    std::vector<gr_complex> vec(_this->_rx_buff_len);
                     memcpy(reinterpret_cast<float*>(vec.data()), buf, _this->_rx_buff_len * 2 * sizeof(float));
                     _this->_vec_queue.push({_this->_frequencies[channel], std::move(vec)});
+                    _this->_vec_cond.notify_one();
                 }
-                _this->_vec_cond.notify_one();
             }
         }
         //======================================================================

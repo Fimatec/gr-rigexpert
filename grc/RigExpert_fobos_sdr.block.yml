@@ -69,7 +69,7 @@ parameters:
 
 
 inputs:
-- id: end_warmup
+- id: phase
   domain: message
   optional: true
 - id: control

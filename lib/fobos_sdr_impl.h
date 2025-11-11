@@ -34,7 +34,6 @@ namespace gr
         class fobos_sdr_impl : public fobos_sdr
         {
         private:
-            uint32_t _buff_counter;
             std::queue<std::pair<double, std::vector<gr_complex>>> _vec_queue;
             bool _running;
             bool _vec_running;
@@ -58,13 +57,17 @@ namespace gr
             double _frequency;
             int _lna_gain;
             int _vga_gain;
+            uint32_t _sample_rate;
             bool _warmup;
             bool _is_scanning;
+            uint32_t _phase;
+            uint32_t _sample_count;
+
             struct fobos_sdr_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
             static void thread_proc(fobos_sdr_impl * ctx);
             static void vector_loop(fobos_sdr_impl * ctx);
-            void handle_end_warmup_msg(pmt::pmt_t msg);
+            void handle_phase_msg(pmt::pmt_t msg);
             void handle_control_msg(pmt::pmt_t msg);
         public:
             fobos_sdr_impl( int index,

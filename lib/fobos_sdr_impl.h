@@ -25,6 +25,7 @@
 #include <gnuradio/RigExpert/fobos_sdr.h>
 #include <fobos_sdr.h>
 #include <pmt/pmt.h>
+#include <queue>
 
 namespace gr
 {
@@ -34,11 +35,17 @@ namespace gr
         {
         private:
             uint32_t _buff_counter;
+            std::queue<std::pair<double, std::vector<gr_complex>>> _vec_queue;
             bool _running;
+            bool _vec_running;
             gr::thread::thread _thread;
+            gr::thread::thread _vec_thread;
             bool _thread_started = false;
+            bool _vec_thread_started = false;
             std::mutex _rx_mutex;
+            std::mutex _vec_mutex;
             std::condition_variable _rx_cond;
+            std::condition_variable _vec_cond;
             float ** _rx_bufs;
             size_t _rx_buffs_count;
             size_t _rx_buff_len;
@@ -47,30 +54,36 @@ namespace gr
             size_t _rx_pos_w;
             size_t _rx_idx_r;
             size_t _rx_pos_r;
+            std::vector<double> _frequencies;
             double _frequency;
             int _lna_gain;
             int _vga_gain;
             bool _warmup;
+            bool _is_scanning;
             struct fobos_sdr_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
             static void thread_proc(fobos_sdr_impl * ctx);
+            static void vector_loop(fobos_sdr_impl * ctx);
             void handle_end_warmup_msg(pmt::pmt_t msg);
             void handle_control_msg(pmt::pmt_t msg);
         public:
             fobos_sdr_impl( int index,
                             double warmup_frequency,
-                            double frequency, 
+                            const std::vector<double> &frequencies,
                             double samplerate,
                             int lna_gain,
                             int vga_gain,
                             int direct_sampling,
-                            int clock_source);
+                            int clock_source,
+                            int buf_len);
             ~fobos_sdr_impl();
 
             int work(int noutput_items,
                      gr_vector_const_void_star& input_items,
                      gr_vector_void_star& output_items);
 
+            void start_scan();
+            void stop_scan();
             void set_frequency(double frequency);
             void set_samplerate(double samplerate);
             void set_lna_gain(int lna_gain);

@@ -24,36 +24,38 @@ namespace gr
     {
         //======================================================================
         using output_type = gr_complex;
-        fobos_sdr::sptr fobos_sdr::make(int index, 
+        fobos_sdr::sptr fobos_sdr::make(int index,
                                         double warmup_frequency,
-                                        double frequency,
+                                        const std::vector<double> &frequencies, 
                                         double samplerate,
                                         int lna_gain,
                                         int vga_gain,
                                         int direct_sampling,
-                                        int clock_source)
+                                        int clock_source,
+                                        int buf_len)
         {
-            printf("make (%d, %f, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, frequency, samplerate, lna_gain, vga_gain, direct_sampling, clock_source);
             return gnuradio::make_block_sptr<fobos_sdr_impl>(
                                         index,
                                         warmup_frequency,
-                                        frequency, 
+                                        frequencies,
                                         samplerate,
                                         lna_gain,
                                         vga_gain,
                                         direct_sampling,
-                                        clock_source);
+                                        clock_source,
+                                        buf_len);
         }
         //======================================================================
         // The private constructor
         fobos_sdr_impl::fobos_sdr_impl( int index,
                                         double warmup_frequency,
-                                        double frequency, 
+                                        const std::vector<double> &frequencies,
                                         double samplerate,
                                         int lna_gain,
                                         int vga_gain,
                                         int direct_sampling,
-                                        int clock_source)
+                                        int clock_source,
+                                        int buf_len)
             : gr::sync_block("fobos_sdr",
                              gr::io_signature::make(0, 0, 0),
                              gr::io_signature::make(
@@ -67,6 +69,7 @@ namespace gr
                 char product[64];
                 char serial[64];
 
+            _frequencies = frequencies;
             _rx_bufs = 0;
             _rx_idx_w = 0;
             _rx_pos_r = 0;
@@ -75,99 +78,72 @@ namespace gr
             _rx_filled = 0;
             _running = false;
             _buff_counter = 0;
-            _frequency = frequency;
+            _frequency = -1;
             _lna_gain = lna_gain;
             _vga_gain = vga_gain;
             _warmup = true;
+            _is_scanning = false;
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
         
             int count = fobos_sdr_get_device_count();
 
             printf("fobos_sdr_impl:: found devices: %d\n", count);
-            if (count > 0)
+            if (count == 0)
             {
-                int result = 0;
+                printf("could not find any fobos_sdr compatible device!\n");
+                return;
+            }
+            int result = 0;
 
-                result = fobos_sdr_open(&_dev, index);
+            result = fobos_sdr_open(&_dev, index);
 
-                if (result == 0)
-                {
-                    printf("open...ok\n");
-                    result = fobos_sdr_get_board_info(_dev, hw_revision, fw_version, manufacturer, product, serial);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_get_board_info - error!\n");
-                    }
-                    else
-                    {
-                        printf("board info\n");
-                        printf("    hw_revision:  %s\n", hw_revision);
-                        printf("    fw_version:   %s\n", fw_version);
-                        printf("    manufacturer: %s\n", manufacturer);
-                        printf("    product:      %s\n", product);
-                        printf("    serial:       %s\n", serial);
-                    }
-                    printf("(%d, %f, %f, %d, %d, %d, %d)\n", index, warmup_frequency, samplerate, 0, 0, direct_sampling, clock_source);
+            if (result != 0)
+            {
+                printf("could not open device! err (%i)\n", result);
+                return;
+            }
 
-                    result = fobos_sdr_set_frequency(_dev, warmup_frequency);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_frequency - error!\n");
-                    }
-
-                    result = fobos_sdr_set_samplerate(_dev, samplerate);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_samplerate - error!\n");
-                    }
-
-                    result = fobos_sdr_set_lna_gain(_dev, 0);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_lna_gain - error!\n");
-                    }
-
-                    result = fobos_sdr_set_vga_gain(_dev, 0);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_vga_gain - error!\n");
-                    }
-
-                    result = fobos_sdr_set_direct_sampling(_dev, direct_sampling);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_direct_sampling - error!\n");
-                    }
-                    
-                    result = fobos_sdr_set_clk_source(_dev, clock_source);
-                    if (result != 0)
-                    {
-                        printf("fobos_sdr_set_clk_source - error!\n");
-                    }
-
-                    _rx_buffs_count = 32;
-                    _rx_buff_len = 65536*2;
-
-                    _rx_bufs = (float**)malloc(_rx_buffs_count * sizeof(float*));
-                    for (unsigned int i = 0; i < _rx_buffs_count; i++)
-                    {
-                        _rx_bufs[i] = (float*)malloc(_rx_buff_len * 2 * sizeof(float));
-                    }
-
-                    _running = true;
-                    _thread = gr::thread::thread(thread_proc, this);
-                    _thread_started = true;
-                }
-                else
-                {
-                    printf("could not open device! err (%i)\n", result);
-                }
+            printf("open...ok\n");
+            result = fobos_sdr_get_board_info(_dev, hw_revision, fw_version, manufacturer, product, serial);
+            if (result != 0)
+            {
+                printf("fobos_sdr_get_board_info - error!\n");
             }
             else
             {
-                printf("could not find any fobos_sdr compatible device!\n");
+                printf("board info\n");
+                printf("    hw_revision:  %s\n", hw_revision);
+                printf("    fw_version:   %s\n", fw_version);
+                printf("    manufacturer: %s\n", manufacturer);
+                printf("    product:      %s\n", product);
+                printf("    serial:       %s\n", serial);
             }
+
+            set_frequency(warmup_frequency);
+            set_samplerate(samplerate);
+            set_lna_gain(0);
+            set_vga_gain(0);
+            set_direct_sampling(direct_sampling);
+            set_clock_source(clock_source);            
+
+            _rx_buffs_count = 32;
+            _rx_buff_len = 8192 * buf_len;
+
+            _rx_bufs = (float**)malloc(_rx_buffs_count * sizeof(float*));
+            for (unsigned int i = 0; i < _rx_buffs_count; i++)
+            {
+                _rx_bufs[i] = (float*)malloc(_rx_buff_len * 2 * sizeof(float));
+            }
+
+            _running = true;
+            _thread = gr::thread::thread(thread_proc, this);
+            _thread_started = true;
+
+            _vec_running = true;
+            _vec_thread = gr::thread::thread(vector_loop, this);
+            _vec_thread_started = true;
+
             message_port_register_in(pmt::mp("end_warmup"));
             set_msg_handler(pmt::mp("end_warmup"), [this](pmt::pmt_t msg) {
                 this->handle_end_warmup_msg(msg);
@@ -176,6 +152,7 @@ namespace gr
             set_msg_handler(pmt::mp("control"), [this](pmt::pmt_t msg) {
                 this->handle_control_msg(msg);
             });
+            message_port_register_out(pmt::mp("vector"));
         }
         //======================================================================
         // virtual destructor
@@ -185,11 +162,18 @@ namespace gr
             {
                 fobos_sdr_cancel_async(_dev);
             }
-            if (_thread_started) {
+            if (_thread_started)
+            {
                 _thread.join();
+            }
+            _vec_running = false;
+            if (_vec_thread_started)
+            {
+                _vec_thread.join();
             }
             if (_dev)
             {
+                stop_scan();
                 fobos_sdr_close(_dev);
             }
             if (_rx_bufs)
@@ -209,25 +193,28 @@ namespace gr
         void fobos_sdr_impl::handle_end_warmup_msg(pmt::pmt_t msg)
         {
             _warmup = false;
-            set_frequency(_frequency);
             set_lna_gain(_lna_gain);
             set_vga_gain(_vga_gain);
+            set_frequency(_frequency);
         }
         void fobos_sdr_impl::handle_control_msg(pmt::pmt_t msg)
         {
             if (!pmt::is_dict(msg)) return;
             pmt::pmt_t v_freq = pmt::dict_ref(msg, pmt::intern("freq"), pmt::PMT_NIL);
-            if (pmt::is_number(v_freq)) {
+            if (pmt::is_number(v_freq))
+            {
                 _frequency = pmt::to_double(v_freq);
                 if (!_warmup) set_frequency(_frequency);
             }
             pmt::pmt_t v_lna = pmt::dict_ref(msg, pmt::intern("lna"), pmt::PMT_NIL);
-            if (pmt::is_number(v_lna)) {
+            if (pmt::is_number(v_lna))
+            {
                 _lna_gain = pmt::to_long(v_lna);
                 if (!_warmup) set_lna_gain(_lna_gain);
             }
             pmt::pmt_t v_vga = pmt::dict_ref(msg, pmt::intern("vga"), pmt::PMT_NIL);
-            if (pmt::is_number(v_vga)) {
+            if (pmt::is_number(v_vga))
+            {
                 _vga_gain = pmt::to_double(v_vga);
                 if (!_warmup) set_vga_gain(_vga_gain);
             }
@@ -276,18 +263,39 @@ namespace gr
                 fobos_sdr_cancel_async(sender);
                 return;
             }
-            std::lock_guard<std::mutex> lock(_this->_rx_mutex);
-            if (_this->_rx_filled < _this->_rx_buffs_count)
+            const bool is_scanning = fobos_sdr_is_scanning(sender);
+            const int channel = fobos_sdr_get_scan_index(sender);
             {
-                memcpy(_this->_rx_bufs[_this->_rx_idx_w], buf, _this->_rx_buff_len * 2 *sizeof(float));
-                _this->_rx_idx_w = (_this->_rx_idx_w + 1) % _this->_rx_buffs_count;
-                _this->_rx_filled++;
+                std::lock_guard<std::mutex> lock(_this->_rx_mutex);
+                if (_this->_rx_filled < _this->_rx_buffs_count)
+                {
+                    if (is_scanning && channel == -1)
+                    {
+                        memset(_this->_rx_bufs[_this->_rx_idx_w], 0, _this->_rx_buff_len * 2 * sizeof(float));
+                    }
+                    else
+                    {
+                        memcpy(_this->_rx_bufs[_this->_rx_idx_w], buf, _this->_rx_buff_len * 2 * sizeof(float));
+                    }
+                    _this->_rx_idx_w = (_this->_rx_idx_w + 1) % _this->_rx_buffs_count;
+                    _this->_rx_filled++;
+                }
+                else
+                {
+                    printf("OVERRUN!!!");
+                }
+                _this->_rx_cond.notify_one();
             }
-            else
             {
-                printf("OVERRUN!!!");
+                std::lock_guard<std::mutex> lock(_this->_vec_mutex);
+                std::vector<gr_complex> vec(_this->_rx_buff_len);
+                if (is_scanning && channel != -1)
+                {
+                    memcpy(reinterpret_cast<float*>(vec.data()), buf, _this->_rx_buff_len * 2 * sizeof(float));
+                    _this->_vec_queue.push({_this->_frequencies[channel], std::move(vec)});
+                }
+                _this->_vec_cond.notify_one();
             }
-            _this->_rx_cond.notify_one();
         }
         //======================================================================
         void fobos_sdr_impl::thread_proc(fobos_sdr_impl * _this)
@@ -308,8 +316,48 @@ namespace gr
             _this->_rx_cond.notify_all();
         }
         //======================================================================
+        void fobos_sdr_impl::vector_loop(fobos_sdr_impl * _this)
+        {
+            while (_this->_vec_running)
+            {
+                std::unique_lock<std::mutex> lock(_this->_vec_mutex);
+                _this->_vec_cond.wait(lock, [&]{ return !_this->_vec_running || !_this->_vec_queue.empty(); });
+                if (!_this->_vec_running) break;
+                if (_this->_vec_queue.empty()) continue;
+                auto [channel, vec] = std::move(_this->_vec_queue.front());
+                _this->_vec_queue.pop();
+                lock.unlock();
+                pmt::pmt_t meta = pmt::make_dict();
+                meta = pmt::dict_add(meta, pmt::intern("channel"), pmt::from_double(channel));
+                meta = pmt::dict_add(meta, pmt::intern("samples"), pmt::init_c32vector(_this->_rx_buff_len, vec.data()));
+                _this->message_port_pub(pmt::mp("vector"), meta);
+            }
+        }
+        //======================================================================
+        void fobos_sdr_impl::start_scan()
+        {
+            if (_is_scanning) return;
+            int res = fobos_sdr_start_scan(_dev, _frequencies.data(), _frequencies.size());
+            _is_scanning = res == 0;
+            printf("Starting scanning: %s\n", res == 0 ? "OK" : "ERR");
+        }
+        //======================================================================
+        void fobos_sdr_impl::stop_scan()
+        {
+            if (!_is_scanning) return;
+            int res = fobos_sdr_stop_scan(_dev);
+            _is_scanning = res != 0;
+            printf("Stopping scanning: %s\n", res == 0 ? "OK" : "ERR");
+        }
+        //======================================================================
         void fobos_sdr_impl::set_frequency(double frequency)
         {
+            if (frequency == -1)
+            {
+                start_scan();
+                return;
+            }
+            stop_scan();
             int res = fobos_sdr_set_frequency(_dev, frequency);
             printf("Setting freq %f MHz: %s\n", frequency / 1E6, res == 0 ? "OK" : "ERR");
         }

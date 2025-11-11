@@ -5,9 +5,8 @@ flags: throttle
 
 templates:
   imports: from gnuradio import RigExpert
-  make: RigExpert.fobos_sdr(${index}, ${warmup_frequency}, ${frequency}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source})
+  make: RigExpert.fobos_sdr(${index}, ${warmup_frequency}, ${frequencies}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source}, ${buf_len})
   callbacks:
-    - set_frequency(${frequency})
     - set_samplerate(${samplerate});
     - set_lna_gain(${lna_gain})
     - set_vga_gain(${vga_gain})
@@ -24,10 +23,10 @@ parameters:
   dtype: real
   default: 100.0E6
 
-- id: frequency
-  label: 'Frequency (Hz)'
-  dtype: real
-  default: 100.0E6
+- id: frequencies
+  label: 'Frequencies (Hz)'
+  dtype: real_vector
+  default: [100.0E6]
 
 - id: samplerate
   label: 'Sample rate (Hz)'
@@ -56,13 +55,17 @@ parameters:
   options: [0, 1]
   option_labels: [ "RF input", "HF1/2 direct"]
 
-
 - id: clock_source
   label: 'Clock source'
   dtype: int
   default: 0
   options: [0, 1]
   option_labels: [ "Internal", "External 10 MHz"]
+
+- id: buf_len
+  label: 'Buffer length'
+  dtype: int
+  default: 100
 
 
 inputs:
@@ -77,6 +80,11 @@ outputs:
 - label: out0
   domain: stream
   dtype: complex
+  optional: true
+- id: vector
+  label: vector
+  domain: message
+  optional: true
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

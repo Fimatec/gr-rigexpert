@@ -45,12 +45,13 @@ namespace gr
              */
             static sptr make(   int index = 0,
                                 double warmup_frequency = 100e6,
-                                double frequency = 100e6, 
+                                const std::vector<double> &frequencies = std::vector<double>{100e6}, 
                                 double samplerate = 10e6,
                                 int lna_gain = 0,
                                 int vga_gain = 0,
                                 int direct_sampling = 0,
-                                int clock_source = 0);
+                                int clock_source = 0,
+                                int buf_len = 100);
 
             /**
              * @brief Callback for setting parameters on-the-fly

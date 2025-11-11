@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fobos_sdr.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(6db64da74e513ad56408eded5100d2d4)                     */
+/* BINDTOOL_HEADER_FILE_HASH(35bb6edb67577c11ffad868f9193a1ca)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -39,12 +39,13 @@ void bind_fobos_sdr(py::module& m)
         .def(py::init(&fobos_sdr::make),
            py::arg("index") = 0,
            py::arg("warmup_frequency") = 100.0E6,
-           py::arg("frequency") = 100.0E6,
+           py::arg("frequencies") = std::vector<double>{100.0E6},
            py::arg("samplerate") = 10.0E6,
            py::arg("lna_gain") = 0,
            py::arg("vga_gain") = 0,
            py::arg("direct_sampling") = 0,
            py::arg("clock_source") = 0,
+           py::arg("buf_len") = 100,
            D(fobos_sdr,make)
         )
         

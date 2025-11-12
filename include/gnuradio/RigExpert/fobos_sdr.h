@@ -51,7 +51,9 @@ namespace gr
                                 int vga_gain = 0,
                                 int direct_sampling = 0,
                                 int clock_source = 0,
-                                int buf_len = 100);
+                                int buf_len = 100,
+                                int exclude_before_phase = 0,
+                                int exclude_after_phase = 0);
 
             /**
              * @brief Callback for setting parameters on-the-fly

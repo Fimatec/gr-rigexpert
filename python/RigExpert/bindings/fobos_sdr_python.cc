@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fobos_sdr.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(35bb6edb67577c11ffad868f9193a1ca)                     */
+/* BINDTOOL_HEADER_FILE_HASH(b51a5ab849677c02bed02a25f79ba7b5)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -46,6 +46,8 @@ void bind_fobos_sdr(py::module& m)
            py::arg("direct_sampling") = 0,
            py::arg("clock_source") = 0,
            py::arg("buf_len") = 100,
+           py::arg("exclude_before_phase") = 0,
+           py::arg("exclude_after_phase") = 0,
            D(fobos_sdr,make)
         )
         

@@ -32,7 +32,9 @@ namespace gr
                                         int vga_gain,
                                         int direct_sampling,
                                         int clock_source,
-                                        int buf_len)
+                                        int buf_len,
+                                        int exclude_before_phase,
+                                        int exclude_after_phase)
         {
             return gnuradio::make_block_sptr<fobos_sdr_impl>(
                                         index,
@@ -43,7 +45,9 @@ namespace gr
                                         vga_gain,
                                         direct_sampling,
                                         clock_source,
-                                        buf_len);
+                                        buf_len,
+                                        exclude_before_phase,
+                                        exclude_after_phase);
         }
         //======================================================================
         // The private constructor
@@ -55,7 +59,9 @@ namespace gr
                                         int vga_gain,
                                         int direct_sampling,
                                         int clock_source,
-                                        int buf_len)
+                                        int buf_len,
+                                        int exclude_before_phase,
+                                        int exclude_after_phase)
             : gr::sync_block("fobos_sdr",
                              gr::io_signature::make(0, 0, 0),
                              gr::io_signature::make(
@@ -138,6 +144,9 @@ namespace gr
             {
                 _rx_bufs[i] = (float*)malloc(_rx_buff_len * 2 * sizeof(float));
             }
+
+            _exclude_half_width = (exclude_after_phase - exclude_before_phase) / 2;
+            _exclude_offset = exclude_before_phase + _exclude_half_width;
 
             _running = true;
             _thread = gr::thread::thread(thread_proc, this);
@@ -270,8 +279,11 @@ namespace gr
                 fobos_sdr_cancel_async(sender);
                 return;
             }
+
             uint32_t prev_sample_count = _this->_sample_count;
-            _this->_sample_count = (_this->_sample_count + buf_length) % _this->_sample_rate;;
+            _this->_sample_count += buf_length;
+            if (_this->_sample_count >= _this->_sample_rate) _this->_sample_count -= _this->_sample_rate;
+
             const bool is_scanning = fobos_sdr_is_scanning(sender);
             const int channel = fobos_sdr_get_scan_index(sender);
             {
@@ -297,9 +309,10 @@ namespace gr
             }
             if (is_scanning && channel != -1)
             {
-                uint32_t diff_phase = (_this->_phase - prev_sample_count + _this->_sample_rate) % _this->_sample_rate;
-                uint32_t diff_curr  = (_this->_sample_count  - prev_sample_count + _this->_sample_rate) % _this->_sample_rate;
-                if (diff_phase >= diff_curr)
+                uint32_t d = _this->_phase + _this->_exclude_offset + _this->_sample_rate - prev_sample_count;
+                if (d >= _this->_sample_rate) d -= _this->_sample_rate;
+                uint32_t dist = (d < buf_length) ? 0u : std::min(d - buf_length, _this->_sample_rate - d);
+                if (dist > _this->_exclude_half_width)
                 {
                     std::lock_guard<std::mutex> lock(_this->_vec_mutex);
                     std::vector<gr_complex> vec(_this->_rx_buff_len);

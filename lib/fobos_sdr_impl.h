@@ -53,6 +53,8 @@ namespace gr
             size_t _rx_pos_w;
             size_t _rx_idx_r;
             size_t _rx_pos_r;
+            uint32_t _exclude_half_width;
+            uint32_t _exclude_offset;
             std::vector<double> _frequencies;
             double _frequency;
             int _lna_gain;
@@ -78,7 +80,9 @@ namespace gr
                             int vga_gain,
                             int direct_sampling,
                             int clock_source,
-                            int buf_len);
+                            int buf_len,
+                            int exclude_before_phase,
+                            int exclude_after_phase);
             ~fobos_sdr_impl();
 
             int work(int noutput_items,

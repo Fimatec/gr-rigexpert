@@ -5,7 +5,7 @@ flags: throttle
 
 templates:
   imports: from gnuradio import RigExpert
-  make: RigExpert.fobos_sdr(${index}, ${warmup_frequency}, ${frequencies}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source}, ${buf_len})
+  make: RigExpert.fobos_sdr(${index}, ${warmup_frequency}, ${frequencies}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source}, ${buf_len}, ${exclude_before_phase}, ${exclude_after_phase})
   callbacks:
     - set_samplerate(${samplerate});
     - set_lna_gain(${lna_gain})
@@ -66,6 +66,16 @@ parameters:
   label: 'Buffer length'
   dtype: int
   default: 100
+
+- id: exclude_before_phase
+  label: 'Exclude before phase'
+  dtype: int
+  default: 0
+
+- id: exclude_after_phase
+  label: 'Exclude after phase'
+  dtype: int
+  default: 0
 
 
 inputs:

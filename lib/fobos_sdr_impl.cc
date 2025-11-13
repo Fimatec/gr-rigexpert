@@ -174,11 +174,20 @@ namespace gr
             {
                 fobos_sdr_cancel_async(_dev);
             }
+            {
+                std::lock_guard<std::mutex> lock(_rx_mutex);
+                _running = false;
+            }
+            _rx_cond.notify_all();
             if (_thread_started)
             {
                 _thread.join();
             }
-            _vec_running = false;
+            {
+                std::lock_guard<std::mutex> lock(_vec_mutex);
+                _vec_running = false;
+            }
+            _vec_cond.notify_all();
             if (_vec_thread_started)
             {
                 _vec_thread.join();
@@ -326,19 +335,17 @@ namespace gr
         void fobos_sdr_impl::thread_proc(fobos_sdr_impl * _this)
         {
             int result = fobos_sdr_read_async(_this->_dev, read_samples_callback, _this, 16, _this->_rx_buff_len);
-            if (result == 0)
-            {
-                printf("fobos_sdr_read_async - ok!\n");
-            }
-            else
-            {
-                printf("fobos_sdr_read_async - error!\n");
-            }
+            printf("fobos_sdr_read_async: %s\n", result == 0 ? "OK" : "ERR");
             {
                 std::lock_guard<std::mutex> lock(_this->_rx_mutex);
                 _this->_running = false;
             }
             _this->_rx_cond.notify_all();
+            {
+                std::lock_guard<std::mutex> lock(_this->_vec_mutex);
+                _this->_vec_running = false;
+            }
+            _this->_vec_cond.notify_all();
         }
         //======================================================================
         void fobos_sdr_impl::vector_loop(fobos_sdr_impl * _this)

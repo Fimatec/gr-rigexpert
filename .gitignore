@@ -30,6 +30,7 @@ Doxyfile
 __pycache__
 .tarball-version
 .version
+.cache/
 
 .*.swp
 
@@ -40,3 +41,5 @@ CMakeCache.txt
 */CMakeFiles
 CMakeFiles
 *.cmake
+
+**/extra_*

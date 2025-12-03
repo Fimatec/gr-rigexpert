@@ -19,6 +19,7 @@
 
 #include <gnuradio/RigExpert/api.h>
 #include <gnuradio/sync_block.h>
+#include <string>
 
 namespace gr 
 {
@@ -44,8 +45,9 @@ namespace gr
              * creating new instances.
              */
             static sptr make(   int index = 0,
+                                std::string table_path = "./table.csv",
+                                std::string pattern = "0",
                                 double warmup_frequency = 100e6,
-                                const std::vector<double> &frequencies = std::vector<double>{100e6}, 
                                 double samplerate = 10e6,
                                 int lna_gain = 0,
                                 int vga_gain = 0,

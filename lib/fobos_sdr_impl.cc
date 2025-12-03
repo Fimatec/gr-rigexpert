@@ -14,9 +14,11 @@
 //  2024.04.26
 //  2024.08.10 libfobos 2.3.1 support, freq[Hz]
 //==============================================================================
+#include <cstdio>
 #include <math.h>
 #include "fobos_sdr_impl.h"
 #include <gnuradio/io_signature.h>
+#include <string>
 
 namespace gr
 {
@@ -25,8 +27,9 @@ namespace gr
         //======================================================================
         using output_type = gr_complex;
         fobos_sdr::sptr fobos_sdr::make(int index,
+                                        std::string table_path,
+                                        std::string pattern,
                                         double warmup_frequency,
-                                        const std::vector<double> &frequencies, 
                                         double samplerate,
                                         int lna_gain,
                                         int vga_gain,
@@ -38,8 +41,9 @@ namespace gr
         {
             return gnuradio::make_block_sptr<fobos_sdr_impl>(
                                         index,
+                                        table_path,
+                                        pattern,
                                         warmup_frequency,
-                                        frequencies,
                                         samplerate,
                                         lna_gain,
                                         vga_gain,
@@ -52,8 +56,9 @@ namespace gr
         //======================================================================
         // The private constructor
         fobos_sdr_impl::fobos_sdr_impl( int index,
+                                        std::string table_path,
+                                        std::string pattern,
                                         double warmup_frequency,
-                                        const std::vector<double> &frequencies,
                                         double samplerate,
                                         int lna_gain,
                                         int vga_gain,
@@ -65,7 +70,8 @@ namespace gr
             : gr::sync_block("fobos_sdr",
                              gr::io_signature::make(0, 0, 0),
                              gr::io_signature::make(
-                                 1, 1, sizeof(output_type)))
+                             1, 1, sizeof(output_type))),
+            _cycle(table_path, pattern)
         {
                 char lib_version[64];
                 char drv_version[64];
@@ -75,7 +81,6 @@ namespace gr
                 char product[64];
                 char serial[64];
 
-            _frequencies = frequencies;
             _rx_bufs = 0;
             _rx_idx_w = 0;
             _rx_pos_r = 0;
@@ -91,6 +96,7 @@ namespace gr
             _is_scanning = false;
             _phase = 0;
             _sample_count = 0;
+            _update_list = false;
 
             fobos_sdr_get_api_info(lib_version, drv_version);
             printf("Fobos SDR API Info lib: %s drv: %s\n", lib_version, drv_version);
@@ -218,6 +224,7 @@ namespace gr
                 _phase = pmt::to_uint64(msg);
             }
             _warmup = false;
+            _frequencies = _cycle.pull();
             set_lna_gain(_lna_gain);
             set_vga_gain(_vga_gain);
             set_frequency(_frequency);
@@ -329,6 +336,10 @@ namespace gr
                     _this->_vec_queue.push({_this->_frequencies[channel], std::move(vec)});
                     _this->_vec_cond.notify_one();
                 }
+                if (channel == static_cast<int>(_this->_frequencies.size() - 1))
+                {
+                    _this->_update_list = true;
+                }
             }
         }
         //======================================================================
@@ -355,6 +366,11 @@ namespace gr
                 std::unique_lock<std::mutex> lock(_this->_vec_mutex);
                 _this->_vec_cond.wait(lock, [&]{ return !_this->_vec_running || !_this->_vec_queue.empty(); });
                 if (!_this->_vec_running) break;
+                if (_this->_update_list.exchange(false)) {
+                    lock.unlock();
+                    _this->update_list();
+                    continue;
+                }
                 if (_this->_vec_queue.empty()) continue;
                 auto [channel, vec] = std::move(_this->_vec_queue.front());
                 _this->_vec_queue.pop();
@@ -380,6 +396,27 @@ namespace gr
             int res = fobos_sdr_stop_scan(_dev);
             _is_scanning = res != 0;
             printf("Stopping scanning: %s\n", res == 0 ? "OK" : "ERR");
+        }
+        //======================================================================
+        void fobos_sdr_impl::update_list()
+        {
+            if (!_is_scanning) return;
+            int res = fobos_sdr_stop_scan(_dev);
+            _is_scanning = res != 0;
+            if (_is_scanning)
+            {
+                printf("Updating list (stop_scan): ERR\n");
+                return;
+            }
+            _frequencies = _cycle.pull();
+            res = fobos_sdr_start_scan(_dev, _frequencies.data(), _frequencies.size());
+            _is_scanning = res == 0;
+            if (!_is_scanning)
+            {
+                printf("Updating list (start_scan): ERR\n");
+                return;
+            }
+            printf("List update: OK\n"); // debug
         }
         //======================================================================
         void fobos_sdr_impl::set_frequency(double frequency)

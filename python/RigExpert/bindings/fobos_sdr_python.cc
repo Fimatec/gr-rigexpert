@@ -14,12 +14,13 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fobos_sdr.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(b51a5ab849677c02bed02a25f79ba7b5)                     */
+/* BINDTOOL_HEADER_FILE_HASH(816403e18712773acc7a623a8a4580dd)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <string>
 
 namespace py = pybind11;
 
@@ -32,14 +33,14 @@ void bind_fobos_sdr(py::module& m)
 
     using fobos_sdr    = ::gr::RigExpert::fobos_sdr;
 
-
     py::class_<fobos_sdr, gr::sync_block, gr::block, gr::basic_block,
         std::shared_ptr<fobos_sdr>>(m, "fobos_sdr", D(fobos_sdr))
 
         .def(py::init(&fobos_sdr::make),
            py::arg("index") = 0,
+           py::arg("table_path") = "./table.csv",
+           py::arg("pattern") = "0",
            py::arg("warmup_frequency") = 100.0E6,
-           py::arg("frequencies") = std::vector<double>{100.0E6},
            py::arg("samplerate") = 10.0E6,
            py::arg("lna_gain") = 0,
            py::arg("vga_gain") = 0,

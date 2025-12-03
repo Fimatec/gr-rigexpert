@@ -117,6 +117,25 @@ else(ENABLE_PYTHON)
   message(STATUS "PYTHON and GRC components are disabled")
 endif(ENABLE_PYTHON)
 
+
+########################################################################
+# Link extra functionality
+########################################################################
+find_library(RIGEXTRA_LIB gr-rigexpert-extra
+    PATHS /usr/local/lib
+)
+
+find_path(RIGEXTRA_INCLUDE_DIR gr-rigexpert-extra/frequency_cycle.h
+    PATHS /usr/local/include
+)
+
+if(NOT RIGEXTRA_LIB OR NOT RIGEXTRA_INCLUDE_DIR)
+    message(FATAL_ERROR "gr-rigexpert-extra not found. Did you install it?")
+endif()
+
+message(STATUS "Found gr-rigexpert-extra: ${RIGEXTRA_LIB}")
+message(STATUS "Includes: ${RIGEXTRA_INCLUDE_DIR}")
+
 ########################################################################
 # Install cmake search helper for this library
 ########################################################################

@@ -26,6 +26,8 @@
 #include <fobos_sdr.h>
 #include <pmt/pmt.h>
 #include <queue>
+#include <gr-rigexpert-extra/frequency_cycle.h>
+#include <string>
 
 namespace gr
 {
@@ -64,6 +66,8 @@ namespace gr
             bool _is_scanning;
             uint32_t _phase;
             uint32_t _sample_count;
+            std::atomic<bool> _update_list;
+            extra::frequency_cycle _cycle;
 
             struct fobos_sdr_dev_t * _dev = NULL;
             static void read_samples_callback(float * buf, uint32_t buf_length, struct fobos_sdr_dev_t* sender, void * user);
@@ -73,8 +77,9 @@ namespace gr
             void handle_control_msg(pmt::pmt_t msg);
         public:
             fobos_sdr_impl( int index,
+                            std::string table_path,
+                            std::string pattern,
                             double warmup_frequency,
-                            const std::vector<double> &frequencies,
                             double samplerate,
                             int lna_gain,
                             int vga_gain,
@@ -91,6 +96,7 @@ namespace gr
 
             void start_scan();
             void stop_scan();
+            void update_list();
             void set_frequency(double frequency);
             void set_samplerate(double samplerate);
             void set_lna_gain(int lna_gain);

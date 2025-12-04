@@ -45,6 +45,7 @@ add_library(gnuradio-RigExpert SHARED ${RigExpert_sources})
 target_link_libraries(gnuradio-RigExpert ${LIBUSB_LIBRARIES})
 target_link_libraries(gnuradio-RigExpert ${FOBOS_SDR_LIB})
 target_link_libraries(gnuradio-RigExpert gnuradio::gnuradio-runtime)
+target_link_libraries(gnuradio-RigExpert gr-rigexpert-extra)
 target_include_directories(gnuradio-RigExpert
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>

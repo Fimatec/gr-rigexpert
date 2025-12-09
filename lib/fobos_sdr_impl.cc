@@ -18,7 +18,6 @@
 #include <math.h>
 #include "fobos_sdr_impl.h"
 #include <gnuradio/io_signature.h>
-#include <pmt/pmt.h>
 #include <string>
 
 namespace gr
@@ -232,27 +231,24 @@ namespace gr
         }
         void fobos_sdr_impl::handle_control_msg(pmt::pmt_t msg)
         {
-            if (pmt::is_dict(msg)) {
-                pmt::pmt_t v_freq = pmt::dict_ref(msg, pmt::intern("freq"), pmt::PMT_NIL);
-                if (pmt::is_number(v_freq))
-                {
-                    _frequency = pmt::to_double(v_freq);
-                    if (!_warmup) set_frequency(_frequency);
-                }
-                pmt::pmt_t v_lna = pmt::dict_ref(msg, pmt::intern("lna"), pmt::PMT_NIL);
-                if (pmt::is_number(v_lna))
-                {
-                    _lna_gain = pmt::to_long(v_lna);
-                    if (!_warmup) set_lna_gain(_lna_gain);
-                }
-                pmt::pmt_t v_vga = pmt::dict_ref(msg, pmt::intern("vga"), pmt::PMT_NIL);
-                if (pmt::is_number(v_vga))
-                {
-                    _vga_gain = pmt::to_double(v_vga);
-                    if (!_warmup) set_vga_gain(_vga_gain);
-                }
-            } else if (pmt::is_null(msg)) {
-                start_scan();
+            if (!pmt::is_dict(msg)) return;
+            pmt::pmt_t v_freq = pmt::dict_ref(msg, pmt::intern("freq"), pmt::PMT_NIL);
+            if (pmt::is_number(v_freq))
+            {
+                _frequency = pmt::to_double(v_freq);
+                if (!_warmup) set_frequency(_frequency);
+            }
+            pmt::pmt_t v_lna = pmt::dict_ref(msg, pmt::intern("lna"), pmt::PMT_NIL);
+            if (pmt::is_number(v_lna))
+            {
+                _lna_gain = pmt::to_long(v_lna);
+                if (!_warmup) set_lna_gain(_lna_gain);
+            }
+            pmt::pmt_t v_vga = pmt::dict_ref(msg, pmt::intern("vga"), pmt::PMT_NIL);
+            if (pmt::is_number(v_vga))
+            {
+                _vga_gain = pmt::to_double(v_vga);
+                if (!_warmup) set_vga_gain(_vga_gain);
             }
         }
         //======================================================================

@@ -416,7 +416,7 @@ namespace gr
                 printf("Updating list (start_scan): ERR\n");
                 return;
             }
-            printf("List update: OK\n"); // debug
+            // printf("List update: OK\n"); // debug
         }
         //======================================================================
         void fobos_sdr_impl::set_frequency(double frequency)

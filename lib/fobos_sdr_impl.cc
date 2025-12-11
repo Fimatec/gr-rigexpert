@@ -323,7 +323,7 @@ namespace gr
                 }
                 _this->_rx_cond.notify_one();
             }
-            if (is_scanning && channel != -1)
+            if (channel != -1)
             {
                 uint32_t d = _this->_phase + _this->_exclude_offset + _this->_sample_rate - prev_sample_count;
                 if (d >= _this->_sample_rate) d -= _this->_sample_rate;

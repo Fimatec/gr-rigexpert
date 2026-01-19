@@ -79,6 +79,7 @@ namespace gr
             fobos_sdr_impl( int index,
                             std::string table_path,
                             std::string pattern,
+                            double frequency,
                             double warmup_frequency,
                             double samplerate,
                             int lna_gain,

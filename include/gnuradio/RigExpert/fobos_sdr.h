@@ -47,6 +47,7 @@ namespace gr
             static sptr make(   int index = 0,
                                 std::string table_path = "./table.csv",
                                 std::string pattern = "0",
+                                double frequency = -1,
                                 double warmup_frequency = 100e6,
                                 double samplerate = 10e6,
                                 int lna_gain = 0,

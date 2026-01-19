@@ -29,6 +29,7 @@ namespace gr
         fobos_sdr::sptr fobos_sdr::make(int index,
                                         std::string table_path,
                                         std::string pattern,
+                                        double frequency,
                                         double warmup_frequency,
                                         double samplerate,
                                         int lna_gain,
@@ -43,6 +44,7 @@ namespace gr
                                         index,
                                         table_path,
                                         pattern,
+                                        frequency,
                                         warmup_frequency,
                                         samplerate,
                                         lna_gain,
@@ -58,6 +60,7 @@ namespace gr
         fobos_sdr_impl::fobos_sdr_impl( int index,
                                         std::string table_path,
                                         std::string pattern,
+                                        double frequency,
                                         double warmup_frequency,
                                         double samplerate,
                                         int lna_gain,
@@ -88,7 +91,7 @@ namespace gr
             _rx_pos_w = 0;
             _rx_filled = 0;
             _running = false;
-            _frequency = -1;
+            _frequency = frequency;
             _lna_gain = lna_gain;
             _vga_gain = vga_gain;
             _sample_rate = samplerate;

@@ -5,7 +5,7 @@ flags: throttle
 
 templates:
   imports: from gnuradio import RigExpert
-  make: RigExpert.fobos_sdr(${index}, ${table_path}, ${pattern}, ${warmup_frequency}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source}, ${buf_len}, ${exclude_before_phase}, ${exclude_after_phase})
+  make: RigExpert.fobos_sdr(${index}, ${table_path}, ${pattern}, ${Frequency}, ${warmup_frequency}, ${samplerate}, ${lna_gain}, ${vga_gain}, ${direct_sampling}, ${clock_source}, ${buf_len}, ${exclude_before_phase}, ${exclude_after_phase})
   callbacks:
     - set_samplerate(${samplerate});
     - set_lna_gain(${lna_gain})
@@ -29,8 +29,13 @@ parameters:
   dtype: string
   default: "0"
 
+- id: Frequency
+  label: 'Initial frequency (Hz)'
+  dtype: real
+  default: -1
+
 - id: warmup_frequency
-  label: 'Warmup Frequency (Hz)'
+  label: 'Frequency during 1-PPS detection (Hz)'
   dtype: real
   default: 100.0E6
 

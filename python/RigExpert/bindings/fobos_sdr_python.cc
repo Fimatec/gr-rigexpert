@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fobos_sdr.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(816403e18712773acc7a623a8a4580dd)                     */
+/* BINDTOOL_HEADER_FILE_HASH(58da932563e99d97da3ba745ddcbf631)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -40,6 +40,7 @@ void bind_fobos_sdr(py::module& m)
            py::arg("index") = 0,
            py::arg("table_path") = "./table.csv",
            py::arg("pattern") = "0",
+           py::arg("frequency") = -1,
            py::arg("warmup_frequency") = 100.0E6,
            py::arg("samplerate") = 10.0E6,
            py::arg("lna_gain") = 0,
@@ -81,9 +82,6 @@ void bind_fobos_sdr(py::module& m)
             D(fobos_sdr,set_clock_source)
         )        
         ;
-
-
-
 
 }
 
